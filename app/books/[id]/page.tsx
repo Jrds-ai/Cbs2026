@@ -213,20 +213,36 @@ export default function BookDashboard() {
                         <div>
                             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{book.title}</h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${book.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${book.status === 'Completed' ? 'bg-emerald-500 text-white' :
+                                        book.status === 'InReview' ? 'bg-blue-500 text-white' :
+                                            'bg-amber-500 text-white'
+                                    }`}>
                                     {book.status || 'Draft'}
                                 </span>
                                 <span className="text-xs text-slate-500">{book.audience} • {book.artStyle}</span>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <button
-                            onClick={() => alert('Sending to processing queue... Backend implementation coming soon!')}
-                            className="px-6 py-2 bg-primary text-white rounded-xl font-bold shadow-md shadow-primary/20 hover:scale-105 transition-all"
-                        >
-                            Save & Process
-                        </button>
+                    <div className="flex items-center gap-3">
+                        {book.status === 'InReview' && (
+                            <button
+                                onClick={() => router.push(`/books/${bookId}/review`)}
+                                className="px-6 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold shadow-md shadow-primary/20 hover:scale-105 transition-all animate-pulse"
+                            >
+                                ✨ Review Pages
+                            </button>
+                        )}
+                        {(book.status === 'Processing' || !book.status) && (
+                            <button
+                                onClick={async () => {
+                                    await updateDoc(doc(db as any, 'books', bookId), { status: 'Processing' });
+                                    setBook((b: any) => ({ ...b, status: 'Processing' }));
+                                }}
+                                className="px-6 py-2 bg-primary text-white rounded-xl font-bold shadow-md shadow-primary/20 hover:scale-105 transition-all"
+                            >
+                                Save &amp; Submit for Processing
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -358,8 +374,8 @@ export default function BookDashboard() {
                                                 )}
                                             </div>
                                             <span className={`text-xs font-bold ${isCover
-                                                    ? 'text-primary dark:text-pink-400'
-                                                    : 'text-slate-500 dark:text-pink-200/60'
+                                                ? 'text-primary dark:text-pink-400'
+                                                : 'text-slate-500 dark:text-pink-200/60'
                                                 }`}>
                                                 {label}
                                             </span>

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Cpu, CheckCircle2, ArrowLeft, Zap, DollarSign, Image as ImageIcon, ExternalLink, Shield } from 'lucide-react';
+import { Cpu, CheckCircle2, ArrowLeft, Zap, DollarSign, Image as ImageIcon, ExternalLink, Shield, BookOpen, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
+import { db } from '@/lib/firebase';
 
 // Curated list of image generation models available on OpenRouter
 // Pricing is per image generated (from OpenRouter API)
@@ -82,12 +83,30 @@ export default function AdminPage() {
     const { user } = useAuth();
     const [selectedModel, setSelectedModel] = useState(IMAGE_MODELS[0].id);
     const [saved, setSaved] = useState(false);
+    const [booksStats, setBooksStats] = useState({ processing: 0, rejected: 0 });
 
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored && IMAGE_MODELS.find(m => m.id === stored)) {
-            setSelectedModel(stored);
-        }
+        if (stored && IMAGE_MODELS.find(m => m.id === stored)) setSelectedModel(stored);
+    }, []);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const { collection, getDocs } = await import('firebase/firestore');
+                if (!db) return;
+                const snap = await getDocs(collection(db as any, 'books'));
+                let processing = 0, rejected = 0;
+                snap.docs.forEach(d => {
+                    const data = d.data();
+                    if (data.status === 'Processing' || !data.generatedPages?.length) processing++;
+                    const rej = (data.generatedPages || []).filter((p: any) => p.status === 'rejected').length;
+                    rejected += rej;
+                });
+                setBooksStats({ processing, rejected });
+            } catch { /* ignore */ }
+        };
+        fetchStats();
     }, []);
 
     const handleSave = () => {
@@ -116,6 +135,22 @@ export default function AdminPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Books Queue shortcut */}
+            <Link href="/admin/books" className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-all mb-6 group">
+                <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-sm">
+                    <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                    <p className="font-bold text-slate-900 dark:text-white">Books Queue</p>
+                    <p className="text-xs text-slate-500 dark:text-pink-200/50">
+                        {booksStats.processing} awaiting generation
+                        {booksStats.rejected > 0 && <span className="ml-2 text-red-500 font-bold">• {booksStats.rejected} pages rejected</span>}
+                    </p>
+                </div>
+                {booksStats.rejected > 0 && <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />}
+                <span className="text-xs font-bold text-slate-400 group-hover:text-primary transition-colors">Open →</span>
+            </Link>
 
             {/* Active Model Summary */}
             <div className="bg-gradient-to-br from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/10 border border-primary/20 rounded-3xl p-4 mb-6">
@@ -146,8 +181,8 @@ export default function AdminPage() {
                                 key={model.id}
                                 onClick={() => setSelectedModel(model.id)}
                                 className={`w-full text-left rounded-2xl border-2 p-4 transition-all ${isSelected
-                                        ? `${model.accentColor} bg-white dark:bg-white/10 shadow-lg`
-                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                    ? `${model.accentColor} bg-white dark:bg-white/10 shadow-lg`
+                                    : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-slate-300 dark:hover:border-white/20'
                                     }`}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -196,8 +231,8 @@ export default function AdminPage() {
                         <button
                             onClick={handleSave}
                             className={`w-full flex items-center justify-center gap-2 font-bold text-base py-4 px-8 rounded-2xl transition-all ${saved
-                                    ? 'bg-emerald-500 text-white shadow-emerald-500/30 shadow-lg'
-                                    : 'bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98]'
+                                ? 'bg-emerald-500 text-white shadow-emerald-500/30 shadow-lg'
+                                : 'bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98]'
                                 }`}
                         >
                             {saved ? (
