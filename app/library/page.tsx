@@ -3,11 +3,13 @@
 import { useAuth } from '@/components/auth-provider';
 import { Book, Plus, Search, Filter, MoreVertical, Clock, Download, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 export default function Library() {
   const { user } = useAuth();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,7 +150,7 @@ export default function Library() {
                   </button>
                   {menuOpen === book.id && (
                     <div className="mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 overflow-hidden w-32 animate-in fade-in slide-in-from-top-2">
-                      <button onClick={() => { alert('Edit modal coming soon!'); setMenuOpen(null); }} className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Edit</button>
+                      <button onClick={() => { router.push(`/books/${book.id}`); setMenuOpen(null); }} className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Edit</button>
                       <button onClick={() => deleteBook(book.id)} className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">Delete</button>
                     </div>
                   )}
