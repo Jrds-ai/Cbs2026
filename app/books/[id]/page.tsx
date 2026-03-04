@@ -7,7 +7,7 @@ import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import Image from 'next/image';
-import { ArrowLeft, Plus, X, Loader2, AlertCircle, CheckCircle2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Plus, X, Loader2, AlertCircle, CheckCircle2, GripVertical } from 'lucide-react';
 
 export default function BookDashboard() {
     const router = useRouter();
@@ -20,6 +20,12 @@ export default function BookDashboard() {
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Generated pages ordering state
+    const [pageOrder, setPageOrder] = useState<string[]>([]);
+    const [coverUrl, setCoverUrl] = useState<string>('');
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const dragIndexRef = useRef<number | null>(null);
 
     // Load the book data
     useEffect(() => {
@@ -48,6 +54,55 @@ export default function BookDashboard() {
 
         fetchBook();
     }, [user, bookId, router]);
+
+    // Initialise page order whenever book data loads
+    useEffect(() => {
+        if (!book) return;
+        const cover = book.image || '';
+        setCoverUrl(cover);
+        // Merge persisted order with available pages
+        const generatedUrls: string[] = (book.generatedPages || []).map((p: any) => p.url || p).filter(Boolean);
+        const all = cover ? [cover, ...generatedUrls] : generatedUrls;
+        if (book.pageOrder && book.pageOrder.length > 0) {
+            // Restore persisted order, append any new ones
+            const persisted = book.pageOrder.filter((u: string) => all.includes(u));
+            const newOnes = all.filter((u: string) => !persisted.includes(u));
+            setPageOrder([...persisted, ...newOnes]);
+        } else {
+            setPageOrder(all);
+        }
+    }, [book]);
+
+    const handleDragStart = (index: number, e: React.DragEvent) => {
+        dragIndexRef.current = index;
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (index: number, e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const from = dragIndexRef.current;
+        if (from === null || from === index) return;
+        setPageOrder(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(from, 1);
+            next.splice(index, 0, moved);
+            return next;
+        });
+        dragIndexRef.current = index;
+    };
+
+    const handleDragEnd = async () => {
+        dragIndexRef.current = null;
+        setIsSavingOrder(true);
+        try {
+            await updateDoc(doc(db as any, 'books', bookId), { pageOrder });
+        } catch (err) {
+            console.error('Failed to save page order', err);
+        } finally {
+            setIsSavingOrder(false);
+        }
+    };
 
     // Compress image before upload
     const compressImage = (file: File): Promise<string> => {
@@ -245,44 +300,73 @@ export default function BookDashboard() {
                     </div>
                 </section>
 
-                {/* Reviews Section - Mocked until backend generates them */}
+                {/* Generated Pages Section */}
                 <section className="bg-white dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm">
-                    <div className="p-6 border-b border-slate-200 dark:border-white/10">
-                        <h2 className="text-xl font-bold mb-1">Generated Pages</h2>
-                        <p className="text-sm text-slate-500">Review and approve your line art.</p>
+                    <div className="p-6 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold mb-1">Generated Pages</h2>
+                            <p className="text-sm text-slate-500">Drag to reorder your pages.</p>
+                        </div>
+                        {isSavingOrder && (
+                            <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Saving order...
+                            </div>
+                        )}
                     </div>
 
-                    {(book.generatedPages && book.generatedPages.length > 0) ? (
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Normally map through generatedPages here */}
-                            {book.generatedPages.map((page: any, idx: number) => (
-                                <div key={idx} className="flex gap-4 p-4 border rounded-2xl bg-slate-50 dark:bg-white/5">
-                                    <div className="relative w-32 aspect-[3/4] rounded-lg overflow-hidden shrink-0">
-                                        <Image
-                                            src={page.url}
-                                            alt="Generated Page"
-                                            fill
-                                            sizes="128px"
-                                            className="object-cover"
-                                        />
-                                    </div>
-                                    <div className="flex-1 flex flex-col">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${page.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : page.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                {page.status || 'Pending Review'}
+                    {pageOrder.length > 0 ? (
+                        <div className="p-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {pageOrder.map((url, index) => {
+                                    const isCover = url === coverUrl;
+                                    const label = isCover ? 'Cover' : `Page ${index + (coverUrl ? 0 : 1)}`;
+                                    const proxyUrl = url.includes('firebasestorage.googleapis.com')
+                                        ? `/api/image-proxy?url=${encodeURIComponent(url)}`
+                                        : url;
+                                    return (
+                                        <div
+                                            key={url}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(index, e)}
+                                            onDragOver={(e) => handleDragOver(index, e)}
+                                            onDragEnd={handleDragEnd}
+                                            className="group flex flex-col items-center gap-2 cursor-grab active:cursor-grabbing select-none"
+                                        >
+                                            <div className={`relative w-full aspect-[3/4] rounded-2xl overflow-hidden border-2 transition-all
+                                                ${isCover
+                                                    ? 'border-primary/60 shadow-lg shadow-primary/20'
+                                                    : 'border-slate-200 dark:border-white/10 group-hover:border-primary/40'
+                                                }`}>
+                                                <Image
+                                                    src={proxyUrl}
+                                                    alt={label}
+                                                    fill
+                                                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                                                    className="object-cover pointer-events-none"
+                                                />
+                                                {/* Drag handle overlay */}
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="bg-black/50 backdrop-blur-sm rounded-lg p-1">
+                                                        <GripVertical className="w-4 h-4 text-white" />
+                                                    </div>
+                                                </div>
+                                                {isCover && (
+                                                    <div className="absolute top-2 left-2">
+                                                        <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Cover</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className={`text-xs font-bold ${isCover
+                                                    ? 'text-primary dark:text-pink-400'
+                                                    : 'text-slate-500 dark:text-pink-200/60'
+                                                }`}>
+                                                {label}
                                             </span>
                                         </div>
-                                        <div className="flex gap-2 mt-auto">
-                                            <button className="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-emerald-600 transition-colors">
-                                                <CheckCircle2 className="w-4 h-4" /> Accept
-                                            </button>
-                                            <button className="flex-1 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-slate-50 transition-colors">
-                                                <X className="w-4 h-4 text-red-500" /> Reject
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                    );
+                                })}
+                            </div>
                         </div>
                     ) : (
                         <div className="p-12 text-center">
@@ -291,7 +375,7 @@ export default function BookDashboard() {
                             </div>
                             <h3 className="font-bold text-lg mb-2">Waiting for AI Generation</h3>
                             <p className="text-slate-500 text-sm max-w-sm mx-auto">
-                                Once your book is processed, the generated line art pages will appear here for you to review, reorder, and approve.
+                                Once your book is processed, the generated line art pages will appear here for you to review and reorder.
                             </p>
                         </div>
                     )}

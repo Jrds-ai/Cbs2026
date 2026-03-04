@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   },
   // Allow access to remote image placeholder.
   images: {
+    localPatterns: [
+      { pathname: '/api/image-proxy', search: '**' }
+    ],
     remotePatterns: [
       {
         protocol: 'https',
