@@ -120,23 +120,8 @@ export default function GenerativeLoader({ imageUrl, onComplete, isLoading }: Ge
         const isFirebaseStorage = imageUrl.includes('firebasestorage.googleapis.com');
 
         if (isFirebaseStorage) {
-            // Use our server-side image proxy to bypass Firebase Storage CORS
-            fetch(`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.dataUrl) {
-                        img.src = data.dataUrl;
-                    } else {
-                        // Proxy failed, just run animation without background image
-                        console.warn('Image proxy returned no data, running animation without background');
-                        img.src = ''; // Trigger onerror -> animate without bg
-                    }
-                })
-                .catch(err => {
-                    console.warn('Image proxy failed, running animation without background:', err);
-                    // Just start the animation without background
-                    img.src = '';
-                });
+            // Proxy returns raw image bytes — set src directly
+            img.src = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
         } else {
             // For non-Firebase Storage URLs (e.g. blob:, data:), fetch directly
             fetch(imageUrl)

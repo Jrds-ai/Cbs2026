@@ -31,13 +31,18 @@ export default function Library() {
         const snapshot = await getDocs(q);
         const fetchedBooks = snapshot.docs.map(doc => {
           const data = doc.data();
+          const rawImage = data.image || (Array.isArray(data.sourceImages) && data.sourceImages[0]) || '';
+          // Proxy Firebase Storage URLs to avoid CORS issues in the browser
+          const image = rawImage.includes('firebasestorage.googleapis.com')
+            ? `/api/image-proxy?url=${encodeURIComponent(rawImage)}`
+            : rawImage || 'https://picsum.photos/seed/placeholder/400/300';
           return {
             id: doc.id,
             title: data.title || 'Untitled Book',
             date: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'Just now',
             pages: data.pages || 10,
             status: data.status || 'Completed',
-            image: data.image || 'https://picsum.photos/seed/placeholder/400/300'
+            image,
           };
         });
         setBooks(fetchedBooks);

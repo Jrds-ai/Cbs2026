@@ -3,10 +3,9 @@ import { NextResponse } from 'next/server';
 /**
  * GET /api/image-proxy?url=<firebase-storage-url>
  *
- * Server-side proxy that fetches an image from any URL and returns it
- * as a base64 Data URI. This bypasses CORS restrictions that prevent
- * the browser from directly fetching Firebase Storage images (when CORS
- * is not configured on the bucket).
+ * Server-side proxy that fetches an image from any URL and streams it back
+ * as the actual image content. This bypasses CORS restrictions in the browser
+ * and can be used directly as an <img src> or Next.js <Image src>.
  */
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -24,11 +23,13 @@ export async function GET(req: Request) {
 
         const contentType = response.headers.get('content-type') || 'image/jpeg';
         const buffer = await response.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString('base64');
 
-        // Return raw base64 data URI
-        return NextResponse.json({
-            dataUrl: `data:${contentType};base64,${base64}`
+        return new NextResponse(buffer, {
+            status: 200,
+            headers: {
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=86400, immutable',
+            },
         });
     } catch (err: any) {
         console.error('Image proxy error:', err);
