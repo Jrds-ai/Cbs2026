@@ -24,22 +24,32 @@ export default function Preview() {
   const [showRevisionForm, setShowRevisionForm] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState('');
   const [isSubmittingRevision, setIsSubmittingRevision] = useState(false);
+  const [allCoverImages, setAllCoverImages] = useState<string[]>([]);
+  const [selectedCoverIdx, setSelectedCoverIdx] = useState(0);
+
 
   useEffect(() => {
     const savedCover = localStorage.getItem('coloring_book_cover_image');
     const savedTitle = localStorage.getItem('coloring_book_title');
+    const imagesRaw = localStorage.getItem('coloring_book_images') || '[]';
+    let images: string[] = [];
+    try { images = JSON.parse(imagesRaw); } catch (e) { }
 
+    // If there are multiple uploaded source images, show them all for pick
+    const covers = images.length > 0 ? images : savedCover ? [savedCover] : [];
+    setAllCoverImages(covers);
     setCoverImage(savedCover);
-    if (savedTitle) setBookTitle(savedTitle); // Update title state
+    if (savedTitle) setBookTitle(savedTitle);
 
-    const generatePreview = async () => {
+    const generatePreview = async (overrideCover?: string) => {
       setIsGenerating(true);
       setError(null);
       try {
         if (!user) {
           throw new Error("You must be logged in to generate a preview.");
         }
-        if (!savedCover) {
+        const sourceImage = overrideCover || savedCover;
+        if (!sourceImage) {
           throw new Error("No cover image selected. Please go back to Step 5.");
         }
 
@@ -63,7 +73,7 @@ CRITICAL INSTRUCTION: You MUST return ONLY the raw Base64 Data URI string of the
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            image: savedCover,
+            image: sourceImage,
             prompt: prompt,
             model: selectedModel,
             useModalities: modelConfig.useModalities,
@@ -116,6 +126,58 @@ CRITICAL INSTRUCTION: You MUST return ONLY the raw Base64 Data URI string of the
       }
     }
   }, [user, loading]);
+
+  // Regenerate with a different chosen source image
+  const handleSwitchCoverImage = (idx: number) => {
+    const chosen = allCoverImages[idx];
+    if (!chosen) return;
+    setSelectedCoverIdx(idx);
+    setCoverImage(chosen);
+    localStorage.removeItem('coloring_book_cover_preview');
+    hasGenerated.current = false;
+    // Trigger regeneration by temporarily updating coverImage state — which causes the useEffect to fire
+    // Instead, call generate directly
+    setIsGenerating(true);
+    setError(null);
+    (async () => {
+      try {
+        if (!user) throw new Error('Not logged in');
+        const title = localStorage.getItem('coloring_book_title') || 'Coloring Book';
+        const selectedModel = localStorage.getItem('admin_selected_model') || 'sourceful/riverflow-v2-standard-preview';
+        const MODELS: Record<string, { useModalities?: boolean }> = {
+          'sourceful/riverflow-v2-standard-preview': { useModalities: false },
+          'google/gemini-2.5-flash-image': { useModalities: true },
+          'google/gemini-3.1-flash-image-preview': { useModalities: true },
+          'google/gemini-3-pro-image-preview': { useModalities: true },
+          'openai/gpt-5-image-mini': { useModalities: true },
+          'openai/gpt-5-image': { useModalities: true },
+        };
+        const modelConfig = MODELS[selectedModel] || { useModalities: false };
+        const prompt = `This GPT acts as a creative assistant that transforms uploaded images into printable, blank coloring book pages. It uses the content and theme of the image as inspiration, applying generative fill techniques to extend the image to fit a standard 8.5"x11" paper size. The image is used for inspiration. Integrate the text "${title}" elegantly into the design as the title of this cover page.
+
+CRITICAL INSTRUCTION: You MUST return ONLY the raw Base64 Data URI string of the generated image (starting with 'data:image/...'). Do NOT include any conversational text, markdown formatting, or explanations whatsoever. Just the raw string.`;
+        const res = await fetch('/api/generate-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: chosen, prompt, model: selectedModel, useModalities: modelConfig.useModalities })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed to generate');
+        if (!storage) throw new Error('Storage missing');
+        const imageId = `cover_preview_${Date.now()}`;
+        const imageRef = ref(storage, `users/${user.uid}/drafts/${imageId}.png`);
+        await uploadString(imageRef, data.image, 'data_url');
+        const downloadUrl = await getDownloadURL(imageRef);
+        setGeneratedImage(downloadUrl);
+        localStorage.setItem('coloring_book_cover_preview', downloadUrl);
+        localStorage.setItem('coloring_book_cover_image', chosen);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsGenerating(false);
+      }
+    })();
+  };
 
   const handleContinue = () => {
     if (generatedImage) {
@@ -271,9 +333,33 @@ CRITICAL INSTRUCTION: You MUST return ONLY the raw Base64 Data URI string of the
               <div>
                 <p className="font-bold mb-1">Make it Perfect!</p>
                 <p className="text-blue-800/80 dark:text-blue-200/80">
-                  Love it? Tap "Looks Great!" to continue. <br />
-                  Want changes? Tap "Request Changes" to add specific notes like "make it more anime style", "add stars to the background", or "move the title lower". We'll hand-edit it to perfection!
+                  Love it? Tap &quot;Looks Great!&quot; to continue. <br />
+                  Want changes? Tap &quot;Request Changes&quot; to add specific notes like &quot;make it more anime style&quot;, &quot;add stars to the background&quot;, or &quot;move the title lower&quot;. We&apos;ll hand-edit it to perfection!
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Source image picker strip – lets user try a different photo */}
+          {allCoverImages.length > 1 && !showRevisionForm && (
+            <div>
+              <p className="text-xs font-bold text-slate-500 dark:text-pink-200/50 uppercase tracking-wider mb-2">
+                Try a different photo
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allCoverImages.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSwitchCoverImage(i)}
+                    disabled={isGenerating}
+                    className={`shrink-0 relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all disabled:opacity-50 ${selectedCoverIdx === i
+                        ? 'border-primary ring-2 ring-primary/30'
+                        : 'border-slate-200 dark:border-white/10 hover:border-primary/50'
+                      }`}
+                  >
+                    <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" referrerPolicy="no-referrer" />
+                  </button>
+                ))}
               </div>
             </div>
           )}

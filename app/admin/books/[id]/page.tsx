@@ -58,6 +58,8 @@ export default function AdminBookPage() {
     const [autoSendToUser, setAutoSendToUser] = useState<boolean>(true);
     const [isRegeneratingCover, setIsRegeneratingCover] = useState(false);
     const [coverPrompt, setCoverPrompt] = useState('');
+    const [coverSourceIdx, setCoverSourceIdx] = useState(0); // which source image to use for cover regen
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null); // for full-size image preview
 
     useEffect(() => {
         if (!isAdmin && user !== null) router.replace('/');
@@ -432,14 +434,15 @@ export default function AdminBookPage() {
     };
 
     const handleRegenerateCover = async () => {
-        if (!book?.sourceImages?.[0]) return;
+        const chosenSourceImage = book?.sourceImages?.[coverSourceIdx];
+        if (!chosenSourceImage) return;
         setIsRegeneratingCover(true);
         try {
             const res = await fetch('/api/generate-preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    image: book.sourceImages[0],
+                    image: chosenSourceImage,
                     prompt: coverPrompt,
                     model: selectedModel,
                     useModalities: MODELS_USE_MODALITIES[selectedModel] ?? false,
@@ -456,11 +459,24 @@ export default function AdminBookPage() {
             await updateDoc(doc(db as any, 'books', bookId), {
                 image: downloadUrl,
                 coverPrompt: coverPrompt,
+                status: 'CoverUpdated',  // mark as updated for user review
                 updatedAt: serverTimestamp()
             });
 
-            setBook((prev: any) => ({ ...prev, image: downloadUrl, coverPrompt }));
-            alert("Cover regenerated successfully!");
+            // Notify user their updated cover is ready
+            await addDoc(collection(db as any, 'notifications'), {
+                userId: book.userId,
+                type: 'cover_updated',
+                bookId,
+                title: 'Your Cover Has Been Updated!',
+                bookTitle: book.title,
+                message: `We've updated the cover for "${book.title}" based on your feedback. Tap to review it!`,
+                read: false,
+                createdAt: serverTimestamp(),
+                linkTo: `/books/${bookId}/review`
+            });
+
+            setBook((prev: any) => ({ ...prev, image: downloadUrl, coverPrompt, status: 'CoverUpdated' }));
         } catch (err: any) {
             console.error(err);
             alert("Failed to regenerate cover: " + err.message);
@@ -479,8 +495,29 @@ export default function AdminBookPage() {
     if (loading) return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
     if (!book) return null;
 
+    const proxyImg = (url: string) => url?.includes('googleapis.com') ? `/api/image-proxy?url=${encodeURIComponent(url)}` : url;
+
     return (
         <div className="flex-1 min-h-screen bg-slate-50 dark:bg-slate-900">
+
+            {/* Lightbox */}
+            {lightboxUrl && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setLightboxUrl(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+                        onClick={() => setLightboxUrl(null)}
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    <div className="relative max-w-3xl max-h-[90vh] w-full h-full" onClick={e => e.stopPropagation()}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={lightboxUrl} alt="Full size preview" className="w-full h-full object-contain rounded-2xl" />
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div className="sticky top-0 z-20 bg-white dark:bg-black/20 border-b border-slate-200 dark:border-white/10 px-6 py-4 backdrop-blur-md">
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -635,27 +672,54 @@ export default function AdminBookPage() {
                     {/* Cover Image Block */}
                     {book.image && (
                         <div className="bg-white dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/10 p-6 shadow-sm flex flex-col md:flex-row gap-6">
-                            <div className="w-full md:w-48 shrink-0 flex flex-col gap-2">
-                                <h3 className="font-bold text-sm text-slate-500">Cover Image</h3>
-                                <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 shadow-inner">
-                                    <Image
-                                        src={book.image?.includes('googleapis.com') ? `/api/image-proxy?url=${encodeURIComponent(book.image)}` : book.image}
-                                        alt="cover"
-                                        fill
-                                        className="object-cover"
-                                    />
-                                    {book.status === 'CoverReview' && (
-                                        <div className="absolute inset-x-0 bottom-0 bg-rose-500 text-white text-[10px] font-bold py-1 text-center uppercase tracking-widest">
-                                            Revision Requested
-                                        </div>
-                                    )}
+                            {/* Left: current cover + source picker */}
+                            <div className="w-full md:w-48 shrink-0 flex flex-col gap-3">
+                                <h3 className="font-bold text-sm text-slate-500 flex items-center gap-2">
+                                    Current Cover
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${book.status === 'CoverReview' ? 'bg-rose-500' :
+                                            book.status === 'CoverUpdated' ? 'bg-purple-500' :
+                                                'bg-slate-400'
+                                        }`}>
+                                        {book.status === 'CoverReview' ? 'Revision Requested' :
+                                            book.status === 'CoverUpdated' ? 'Sent to User' : 'Current'}
+                                    </span>
+                                </h3>
+                                <div
+                                    className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 shadow-inner cursor-zoom-in group"
+                                    onClick={() => setLightboxUrl(proxyImg(book.image))}
+                                >
+                                    <Image src={proxyImg(book.image)} alt="cover" fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <span className="text-white text-xs font-bold opacity-0 group-hover:opacity-100 bg-black/50 px-2 py-1 rounded-lg transition-opacity">View Full</span>
+                                    </div>
                                 </div>
+
+                                {/* Source image picker */}
+                                {sourceImages.length > 1 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Source for Regen</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {sourceImages.map((src, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setCoverSourceIdx(i)}
+                                                    className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 transition-all ${coverSourceIdx === i ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200 dark:border-white/10 hover:border-primary/50'
+                                                        }`}
+                                                >
+                                                    <Image src={proxyImg(src)} alt={`Source ${i + 1}`} fill className="object-cover" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Right: revision notes, prompt editor, actions */}
                             <div className="flex-1 flex flex-col gap-4">
                                 {book.coverRevisionNotes && (
                                     <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl p-4">
                                         <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1">
-                                            <MessageSquare className="w-4 h-4" /> Cover Revision Notes
+                                            <MessageSquare className="w-4 h-4" /> User Revision Notes
                                         </p>
                                         <p className="text-sm text-slate-800 dark:text-rose-100 italic">
                                             &quot;{book.coverRevisionNotes}&quot;
@@ -663,22 +727,33 @@ export default function AdminBookPage() {
                                     </div>
                                 )}
 
-                                <div>
+                                <div className={`border rounded-2xl p-4 ${book.status === 'CoverReview'
+                                        ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20'
+                                        : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10'
+                                    }`}>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">Cover Prompt</p>
                                     <textarea
                                         value={coverPrompt}
                                         onChange={e => setCoverPrompt(e.target.value)}
-                                        rows={4}
-                                        className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 resize-none font-mono mb-4"
+                                        rows={5}
+                                        className={`w-full rounded-xl border bg-white dark:bg-black/20 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 resize-none font-mono mb-4 ${book.status === 'CoverReview'
+                                                ? 'border-red-200 dark:border-red-500/30 focus:ring-red-500/40'
+                                                : 'border-slate-200 dark:border-white/10 focus:ring-primary/40'
+                                            }`}
                                     />
-                                    <button
-                                        onClick={handleRegenerateCover}
-                                        disabled={isRegeneratingCover}
-                                        className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 border border-slate-700 hover:bg-black text-white font-bold text-sm transition-all disabled:opacity-50"
-                                    >
-                                        {isRegeneratingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                                        Regenerate Cover
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleRegenerateCover}
+                                            disabled={isRegeneratingCover}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold text-sm shadow-sm transition-all disabled:opacity-50 ${book.status === 'CoverReview'
+                                                    ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+                                                    : 'bg-primary hover:bg-primary/90 shadow-primary/20'
+                                                }`}
+                                        >
+                                            {isRegeneratingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                            {isRegeneratingCover ? 'Regenerating...' : 'Regenerate Cover & Notify User'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -693,8 +768,12 @@ export default function AdminBookPage() {
                                 {/* Source Photo */}
                                 <div className="w-full md:w-48 shrink-0 flex flex-col gap-2">
                                     <h3 className="font-bold text-sm text-slate-500">Source Photo {idx + 1}</h3>
-                                    <div className="relative w-full aspect-square rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10">
-                                        <Image src={sourceUrl} alt="source" fill className="object-cover" />
+                                    <div
+                                        className="relative w-full aspect-square rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 cursor-zoom-in group"
+                                        onClick={() => setLightboxUrl(proxyImg(sourceUrl))}
+                                    >
+                                        <Image src={proxyImg(sourceUrl)} alt="source" fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                                     </div>
                                 </div>
 
@@ -716,8 +795,12 @@ export default function AdminBookPage() {
                                         <div className="flex flex-col gap-4">
                                             {/* Current Page */}
                                             <div className="flex gap-6">
-                                                <div className="relative w-40 aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shrink-0 shadow-sm">
-                                                    <Image src={page.url?.includes('googleapis.com') ? `/api/image-proxy?url=${encodeURIComponent(page.url)}` : page.url} alt="generated" fill className="object-cover" />
+                                                <div
+                                                    className="relative w-40 aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shrink-0 shadow-sm cursor-zoom-in group"
+                                                    onClick={() => setLightboxUrl(proxyImg(page.url))}
+                                                >
+                                                    <Image src={proxyImg(page.url)} alt="generated" fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                                                     <div className="absolute top-2 right-2 flex gap-1">
                                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm ${page.status === 'approved' ? 'bg-emerald-500' :
                                                             page.status === 'rejected' ? 'bg-red-500' :
@@ -786,8 +869,11 @@ export default function AdminBookPage() {
                                                     <div className="flex flex-col gap-4">
                                                         {page.history.toReversed().map((hist, hIdx) => (
                                                             <div key={hIdx} className="flex gap-4 opacity-80 hover:opacity-100 transition-opacity p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                                                                <div className="relative w-24 aspect-[3/4] rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-white/10">
-                                                                    <Image src={hist.url?.includes('googleapis.com') ? `/api/image-proxy?url=${encodeURIComponent(hist.url)}` : hist.url} alt={`v${hist.version}`} fill className="object-cover" />
+                                                                <div
+                                                                    className="relative w-24 aspect-[3/4] rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-white/10 cursor-zoom-in group"
+                                                                    onClick={() => setLightboxUrl(proxyImg(hist.url))}
+                                                                >
+                                                                    <Image src={proxyImg(hist.url)} alt={`v${hist.version}`} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                                                                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] text-center font-bold py-0.5">v{hist.version}</div>
                                                                 </div>
                                                                 <div className="flex-1 text-sm">

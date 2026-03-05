@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth-provider';
 export type FirestoreNotification = {
     id: string;
     userId: string;
-    type: 'pages_ready' | 'page_updated' | 'page_rejected' | 'order' | 'feature' | 'social';
+    type: 'pages_ready' | 'page_updated' | 'page_rejected' | 'order' | 'feature' | 'social' | 'cover_updated' | 'cover_review_requested' | 'cover_review_unpaid';
     title: string;
     message: string;
     linkTo?: string;
