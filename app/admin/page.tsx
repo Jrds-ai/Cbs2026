@@ -5,6 +5,8 @@ import { Cpu, CheckCircle2, ArrowLeft, Zap, DollarSign, Image as ImageIcon, Exte
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import { db } from '@/lib/firebase';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { useRouter } from 'next/navigation';
 
 // Curated list of image generation models available on OpenRouter
 // Pricing is per image generated (from OpenRouter API)
@@ -81,9 +83,15 @@ const STORAGE_KEY = 'admin_selected_model';
 
 export default function AdminPage() {
     const { user } = useAuth();
+    const isAdmin = useIsAdmin();
+    const router = useRouter();
     const [selectedModel, setSelectedModel] = useState(IMAGE_MODELS[0].id);
     const [saved, setSaved] = useState(false);
     const [booksStats, setBooksStats] = useState({ processing: 0, rejected: 0 });
+
+    useEffect(() => {
+        if (isAdmin === false && user !== null) router.replace('/');
+    }, [isAdmin, user, router]);
 
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -116,6 +124,8 @@ export default function AdminPage() {
     };
 
     const currentModel = IMAGE_MODELS.find(m => m.id === selectedModel) || IMAGE_MODELS[0];
+
+    if (!isAdmin) return null;
 
     return (
         <div className="flex-1 flex flex-col px-4 pb-32 max-w-md mx-auto w-full pt-6 animate-fade-in">

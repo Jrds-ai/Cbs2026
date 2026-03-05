@@ -5,12 +5,20 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { ArrowLeft, BookOpen, Users, AlertTriangle, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function AdminBooksPage() {
     const { user } = useAuth();
+    const isAdmin = useIsAdmin();
+    const router = useRouter();
     const [books, setBooks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!isAdmin && user !== null) router.replace('/');
+    }, [isAdmin, user, router]);
 
     useEffect(() => {
         const fetchAll = async () => {
@@ -33,6 +41,8 @@ export default function AdminBooksPage() {
     const getRejectedCount = (book: any) => {
         return (book.generatedPages || []).filter((p: any) => p.status === 'rejected').length;
     };
+
+    if (!isAdmin) return null;
 
     return (
         <div className="flex-1 flex flex-col px-4 pb-32 max-w-2xl mx-auto w-full pt-6 animate-fade-in">

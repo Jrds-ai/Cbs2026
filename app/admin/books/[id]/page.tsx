@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Image from 'next/image';
 import { ArrowLeft, Loader2, Zap, RefreshCw, CheckCircle2, XCircle, Clock, AlertTriangle, MessageSquare } from 'lucide-react';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 type Page = {
     id: string;
@@ -24,6 +25,7 @@ export default function AdminBookPage() {
     const router = useRouter();
     const bookId = params.id as string;
     const { user } = useAuth();
+    const isAdmin = useIsAdmin();
 
     const [book, setBook] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -34,6 +36,10 @@ export default function AdminBookPage() {
         `Transform this photo into a high-contrast, black-and-white line art coloring book page for children. Extract the main subjects and render them in clean simplified line art. Remove all color, shading, and backgrounds. Output: clean white paper with bold black outlines only — ready to print and color.`
     );
     const [progress, setProgress] = useState('');
+
+    useEffect(() => {
+        if (!isAdmin && user !== null) router.replace('/');
+    }, [isAdmin, user, router]);
 
     const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('admin_selected_model') || 'sourceful/riverflow-v2-standard-preview' : 'sourceful/riverflow-v2-standard-preview';
     const MODELS_USE_MODALITIES: Record<string, boolean> = {
@@ -122,6 +128,7 @@ export default function AdminBookPage() {
     const approvedPages = generatedPages.filter(p => p.status === 'approved');
     const sourceImages: string[] = book?.sourceImages || [];
 
+    if (!isAdmin) return null;
     if (loading) return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
     if (!book) return null;
 
@@ -140,8 +147,8 @@ export default function AdminBookPage() {
                         </div>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${book.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
-                            book.status === 'InReview' ? 'bg-blue-100 text-blue-700' :
-                                'bg-amber-100 text-amber-700'
+                        book.status === 'InReview' ? 'bg-blue-100 text-blue-700' :
+                            'bg-amber-100 text-amber-700'
                         }`}>{book.status}</span>
                 </div>
             </div>
