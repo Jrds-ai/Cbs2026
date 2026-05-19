@@ -513,8 +513,7 @@ export default function AdminBookPage() {
                         <X className="w-6 h-6" />
                     </button>
                     <div className="relative max-w-3xl max-h-[90vh] w-full h-full" onClick={e => e.stopPropagation()}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={lightboxUrl} alt="Full size preview" className="w-full h-full object-contain rounded-2xl" />
+                        <Image src={lightboxUrl} alt="Full size preview" fill sizes="100vw" className="object-contain rounded-2xl" />
                     </div>
                 </div>
             )}
@@ -636,7 +635,7 @@ export default function AdminBookPage() {
                             <div>
                                 <h4 className="font-bold text-amber-800 dark:text-amber-400 text-sm">Book is stuck in Processing</h4>
                                 <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-1 max-w-md">
-                                    The book status still says "Processing" even though pages have been generated. Click below to un-stick it and mark it ready for the user's review.
+                                    The book status still says &quot;Processing&quot; even though pages have been generated. Click below to un-stick it and mark it ready for the user&apos;s review.
                                 </p>
                             </div>
                             <button

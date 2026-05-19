@@ -53,8 +53,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (db) {
           try {
-            const { doc, setDoc } = await import('firebase/firestore');
-            await setDoc(doc(db, 'users', firebaseUser.uid), userData, { merge: true });
+            const { doc, getDoc, setDoc } = await import('firebase/firestore');
+            const userRef = doc(db, 'users', firebaseUser.uid);
+            const existing = await getDoc(userRef);
+            const existingData = existing.data();
+
+            if (!existing.exists()
+              || existingData?.name !== userData.name
+              || existingData?.email !== userData.email) {
+              await setDoc(userRef, userData, { merge: true });
+            }
           } catch (e) {
             console.error('Failed to save user to Firestore', e);
           }
@@ -69,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login' && pathname !== '/signup') {
+    if (!loading && !user && pathname !== '/' && pathname !== '/login' && pathname !== '/signup') {
       router.push('/login');
     }
   }, [user, loading, pathname, router]);

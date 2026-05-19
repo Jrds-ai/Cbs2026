@@ -2,23 +2,23 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { ArrowRight, BookOpen, CheckCircle2 } from 'lucide-react';
 
 export default function Step5() {
     const router = useRouter();
-    const [images, setImages] = useState<string[]>([]);
-    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
-    useEffect(() => {
+    const [images] = useState<string[]>(() => {
+        if (typeof window === 'undefined') return [];
         const saved = localStorage.getItem('coloring_book_images');
-        if (saved) {
-            try {
-                setImages(JSON.parse(saved));
-            } catch (e) { }
+        if (!saved) return [];
+        try {
+            return JSON.parse(saved);
+        } catch {
+            return [];
         }
-    }, []);
+    });
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
     const handleContinue = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -47,7 +47,7 @@ export default function Step5() {
                     Choose a Cover
                 </h1>
                 <p className="text-slate-500 dark:text-pink-200/70 text-base leading-relaxed">
-                    Select one of your uploaded photos to inspire the AI for your coloring book's main cover!
+                    Select one of your uploaded photos to inspire the AI for your coloring book&apos;s main cover!
                 </p>
             </div>
 

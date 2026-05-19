@@ -82,10 +82,6 @@ CRITICAL INSTRUCTION: You MUST return ONLY the raw Base64 Data URI string of the
 
         const data = await res.json();
 
-        console.log("OPENROUTER RAW START: =======\n");
-        console.log(data);
-        console.log("OPENROUTER RAW END: =======\n");
-
         if (!res.ok || !data.success) {
           throw new Error(data.error || 'Failed to generate preview image');
         }

@@ -10,8 +10,14 @@ export default function TestPage() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string>('');
+    const isDev = process.env.NODE_ENV !== 'production';
 
     const generateData = async () => {
+        if (!isDev) {
+            setResult('Test data generation is disabled in production.');
+            return;
+        }
+
         if (!user || !db) {
             setResult('Please login first to run the test securely.');
             return;
@@ -64,7 +70,11 @@ export default function TestPage() {
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
             <h1 className="text-3xl font-bold mb-4 mt-20">System Test</h1>
 
-            {user ? (
+            {!isDev ? (
+                <p className="text-slate-500 mb-8 p-4 bg-red-50 text-red-600 rounded-xl">
+                    Test data generation is disabled in production.
+                </p>
+            ) : user ? (
                 <div className="space-y-6 flex flex-col items-center">
                     <p className="text-slate-500 max-w-sm">
                         Authenticated as <strong>{user.email}</strong>.<br /><br />

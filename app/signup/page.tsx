@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
-import { BookOpen, ArrowRight, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowRight, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -70,7 +71,7 @@ export default function Signup() {
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-background-light dark:bg-background-dark">
       <div className="w-full max-w-md flex flex-col items-center animate-fade-in">
         <div className="size-24 rounded-3xl overflow-hidden shadow-xl shadow-primary/30 mb-8 relative">
-          <img src="/logo.png" alt="Coloring Book Studio Logo" className="w-full h-full object-cover" />
+          <Image src="/logo.png" alt="Coloring Book Studio Logo" fill sizes="96px" className="object-cover" />
         </div>
 
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 text-center">Coloring Book Studio</h1>

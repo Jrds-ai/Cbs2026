@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -11,7 +12,74 @@
   --color-background-dark: #230f1b;
   --color-card-dark: rgba(255, 255, 255, 0.05);
 
-  --font-display: 'Epilogue', sans-serif;
+  /* Stitch Colors */
+  --color-stitch-on-secondary-fixed-variant: #742f4e;
+  --color-stitch-on-surface: #ffe0ec;
+  --color-stitch-tertiary-container: #554400;
+  --color-stitch-tertiary: #ffcc00;
+  --color-stitch-surface-container-high: #412133;
+  --color-stitch-on-error: #690005;
+  --color-stitch-surface-container: #361a2a;
+  --color-stitch-on-error-container: #ffdad6;
+  --color-stitch-primary-fixed: #ffd9e5;
+  --color-stitch-on-tertiary-fixed-variant: #443600;
+  --color-stitch-on-primary-fixed: #3e0022;
+  --color-stitch-secondary-container: #763150;
+  --color-stitch-on-primary-container: #ffffff;
+  --color-stitch-surface-tint: #ffb0ce;
+  --color-stitch-error-container: #93000a;
+  --color-stitch-surface-container-lowest: #160811;
+  --color-stitch-outline: #9f838f;
+  --color-stitch-primary-container: #96005a;
+  --color-stitch-on-surface-variant: #dbb9c6;
+  --color-stitch-inverse-surface: #ffe0ec;
+  --color-stitch-surface-dim: #1c0c16;
+  --color-stitch-on-tertiary-container: #ffe066;
+  --color-stitch-background: #230f1b;
+  --color-stitch-on-primary: #64003a;
+  --color-stitch-surface-variant: #4d283d;
+  --color-stitch-tertiary-fixed-dim: #ffcc00;
+  --color-stitch-on-tertiary-fixed: #241a00;
+  --color-stitch-tertiary-fixed: #ffe08c;
+  --color-stitch-on-secondary-fixed: #3d0122;
+  --color-stitch-on-secondary: #ffffff;
+  --color-stitch-primary: #ffb0ce;
+  --color-stitch-on-tertiary: #3a2d00;
+  --color-stitch-inverse-on-surface: #3a1d2e;
+  --color-stitch-surface-container-low: #2d1423;
+  --color-stitch-on-background: #ffe0ec;
+  --color-stitch-secondary: #d61f69;
+  --color-stitch-surface: #230f1b;
+  --color-stitch-error: #ffb4ab;
+  --color-stitch-on-secondary-container: #f89dc1;
+  --color-stitch-secondary-fixed-dim: #ffb0ce;
+  --color-stitch-inverse-primary: #af206d;
+  --color-stitch-primary-fixed-dim: #ffb0ce;
+  --color-stitch-surface-bright: #4a233b;
+  --color-stitch-surface-container-highest: #4d283d;
+  --color-stitch-secondary-fixed: #ffd9e5;
+  --color-stitch-outline-variant: #573b48;
+  --color-stitch-on-primary-fixed-variant: #8c0054;
+
+  --font-display: var(--font-epilogue), sans-serif;
+  --font-headline: var(--font-epilogue), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer utilities {
@@ -27,5 +95,15 @@
   }
   .modern-input:focus {
     box-shadow: 0 0 0 2px rgba(150, 0, 90, 0.4);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .hero-glow {
+    background: radial-gradient(circle at 50% 50%, rgba(150, 0, 90, 0.15) 0%, transparent 70%);
   }
 }

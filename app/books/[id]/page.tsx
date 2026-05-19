@@ -356,11 +356,12 @@ export default function BookDashboard() {
                                                         ? 'border-primary/60 shadow-lg shadow-primary/20'
                                                         : 'border-slate-200 dark:border-white/10 group-hover:border-primary/40'
                                                     }`}>
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
+                                                    <Image
                                                         src={proxyUrl}
                                                         alt={label}
-                                                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                                                        fill
+                                                        sizes="(max-width: 768px) 50vw, 25vw"
+                                                        className="object-cover pointer-events-none"
                                                     />
                                                     {/* Drag handle overlay */}
                                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">

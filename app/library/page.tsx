@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/components/auth-provider';
-import { Book, Plus, Search, Filter, MoreVertical, Clock, Download, Sparkles } from 'lucide-react';
+import { Book, Plus, Search, MoreVertical, Clock, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -25,7 +25,7 @@ export default function Library() {
       try {
         const { db } = await import('@/lib/firebase');
         if (!db) return;
-        const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore');
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
         const q = query(
           collection(db, 'books'),
           where('userId', '==', user.uid)
@@ -57,30 +57,6 @@ export default function Library() {
 
     fetchBooks();
   }, [user]);
-
-  const generateDummyData = async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const { db } = await import('@/lib/firebase');
-      if (!db) return;
-      const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
-
-      await addDoc(collection(db, 'books'), {
-        userId: user.uid,
-        title: 'Magical Book 5',
-        pages: 42,
-        status: 'Completed',
-        image: 'https://picsum.photos/seed/magicalbook5/400/300',
-        createdAt: serverTimestamp()
-      });
-      // reload after 1 sec to catch the new doc
-      setTimeout(() => window.location.reload(), 1000);
-    } catch (error) {
-      console.error("Error adding dummy data:", error);
-      setLoading(false);
-    }
-  };
 
   const handleDownload = (bookTitle: string) => {
     alert(`Starting download for ${bookTitle}...`);
@@ -137,10 +113,12 @@ export default function Library() {
           filteredBooks.map((book) => (
             <div key={book.id} className="group bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
               <div className="relative aspect-[4/3] overflow-hidden">
-                <img
+                <Image
                   src={book.image}
                   alt={book.title}
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 448px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute top-4 right-4 z-10 flex flex-col items-end">
@@ -189,10 +167,9 @@ export default function Library() {
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No books found</h3>
             <p className="text-slate-500 dark:text-pink-200/60 max-w-[200px] mb-6">Start your first creation to see it here!</p>
-            <button onClick={generateDummyData} className="px-6 py-3 rounded-xl bg-primary/10 text-primary dark:text-pink-400 font-bold hover:bg-primary/20 transition-all flex items-center justify-center gap-2 group">
-              <Sparkles className="w-5 h-5 text-primary dark:text-pink-400 group-hover:scale-110 transition-transform" />
-              <span>Make "Magical Book 5" Dummy Data</span>
-            </button>
+            <Link href="/create/step-1" className="px-6 py-3 rounded-xl bg-primary/10 text-primary dark:text-pink-400 font-bold hover:bg-primary/20 transition-all">
+              Create your first book
+            </Link>
           </div>
         )}
       </div>

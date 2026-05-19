@@ -7,6 +7,18 @@ import { useNotifications } from '@/components/notification-provider';
 
 // Actionable notification types that should show the magic overlay
 const MAGIC_TYPES = ['cover_updated', 'pages_ready', 'page_updated', 'cover_review_requested'];
+const STARBURST_PARTICLES = Array.from({ length: 16 }, (_, i) => {
+    const seed = i + 1;
+    return {
+        id: i,
+        size: ((seed * 37) % 6) + 3,
+        x: (seed * 29) % 100,
+        y: (seed * 53) % 100,
+        delay: ((seed * 17) % 30) / 10,
+        duration: ((seed * 19) % 30) / 10 + 3,
+        color: i % 3 === 0 ? '#a855f7' : i % 3 === 1 ? '#ec4899' : '#6366f1',
+    };
+});
 
 export function MagicNotification() {
     const { notifications, markAsRead } = useNotifications();
@@ -164,19 +176,9 @@ export function MagicNotification() {
 
 // Animated starburst particles floating behind the card
 function StarburstParticles() {
-    const particles = Array.from({ length: 16 }, (_, i) => ({
-        id: i,
-        size: Math.random() * 6 + 3,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        delay: Math.random() * 3,
-        duration: Math.random() * 3 + 3,
-        color: i % 3 === 0 ? '#a855f7' : i % 3 === 1 ? '#ec4899' : '#6366f1',
-    }));
-
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {particles.map(p => (
+            {STARBURST_PARTICLES.map(p => (
                 <div
                     key={p.id}
                     className="absolute rounded-full"

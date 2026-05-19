@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Library, Plus, LayoutGrid, Settings, Users } from 'lucide-react';
+import { Home, Library, Plus, Settings, Users } from 'lucide-react';
+import { useAuth } from './auth-provider';
+import { shouldHideBottomNav } from '@/lib/navigation';
 
 export function BottomNav() {
   const pathname = usePathname();
 
-  if (pathname === '/login' || pathname === '/signup' || pathname.startsWith('/create') || pathname.includes('/review') || pathname === '/brand') {
+  const { user } = useAuth();
+
+  if (shouldHideBottomNav(pathname, Boolean(user))) {
     return null;
   }
 

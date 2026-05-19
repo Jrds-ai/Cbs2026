@@ -3,18 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
-import { Brush, ArrowRight, Rocket, PawPrint, Castle, Lightbulb } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { Brush, ArrowRight, Rocket, Lightbulb } from 'lucide-react';
+import { LandingPage } from '@/components/LandingPage';
 
 export default function Dashboard() {
-  if (typeof window === 'undefined') {
-    getDocs(collection(db as any, 'books')).then(snap => {
-      console.log("=== DB DUMP ===");
-      snap.forEach(doc => console.log(doc.id, doc.data()));
-      console.log("=== END DUMP ===");
-    }).catch(e => console.error("DB dump failed", e));
-  }
+
   const { user } = useAuth();
 
   const [recentBooks, setRecentBooks] = useState<any[]>([]);
@@ -59,7 +52,9 @@ export default function Dashboard() {
     fetchRecent();
   }, [user]);
 
-  if (!user) return null;
+  if (!user) {
+    return <LandingPage />;
+  }
 
   return (
     <div className="flex-1 flex flex-col px-6 pb-32 max-w-md mx-auto w-full pt-6 animate-fade-in">

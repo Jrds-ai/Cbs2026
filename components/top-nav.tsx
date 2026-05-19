@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, BookOpen, Bell, User, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Bell, User, MoreVertical } from 'lucide-react';
 import { useAuth } from './auth-provider';
 import { useNotifications } from './notification-provider';
+import { shouldHideTopNav } from '@/lib/navigation';
 
 export function TopNav() {
   const pathname = usePathname();
@@ -12,7 +14,7 @@ export function TopNav() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
 
-  if (pathname === '/login' || pathname === '/signup' || pathname === '/templates' || pathname === '/brand') {
+  if (shouldHideTopNav(pathname, Boolean(user))) {
     return null;
   }
 
@@ -28,7 +30,7 @@ export function TopNav() {
       ) : (
         <div className="flex items-center gap-2">
           <div className="size-9 rounded-xl overflow-hidden relative shadow-lg shadow-primary/30">
-            <img src="/logo.png" alt="Coloring Book Studio Logo" className="w-full h-full object-cover" />
+            <Image src="/logo.png" alt="Coloring Book Studio Logo" fill sizes="36px" className="object-cover" />
           </div>
           <span className="font-bold text-lg tracking-tight text-primary dark:text-pink-400">Coloring Book Studio</span>
         </div>
@@ -38,7 +40,7 @@ export function TopNav() {
         <>
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-xl overflow-hidden relative shadow-lg shadow-primary/30">
-              <img src="/logo.png" alt="Coloring Book Studio Logo" className="w-full h-full object-cover" />
+              <Image src="/logo.png" alt="Coloring Book Studio Logo" fill sizes="32px" className="object-cover" />
             </div>
             <span className="font-bold text-lg tracking-tight text-primary dark:text-pink-400">
               {isReview ? 'Review Page' : 'Coloring Book Studio'}
